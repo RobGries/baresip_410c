@@ -70,16 +70,8 @@ static struct vidsrc *vidsrc;
 static enum vidfmt match_fmt(u_int32_t fmt)
 {
 	switch (fmt) {
-
-	case V4L2_PIX_FMT_YUV420: return VID_FMT_YUV420P;
-	case V4L2_PIX_FMT_YUYV:   return VID_FMT_YUYV422;
-	case V4L2_PIX_FMT_UYVY:   return VID_FMT_UYVY422;
-	case V4L2_PIX_FMT_RGB32:  return VID_FMT_RGB32;
-	case V4L2_PIX_FMT_RGB565: return VID_FMT_RGB565;
-	case V4L2_PIX_FMT_RGB555: return VID_FMT_RGB555;
 	case V4L2_PIX_FMT_NV12:   return VID_FMT_NV12;
-	case V4L2_PIX_FMT_NV21:   return VID_FMT_NV21;
-	default:                  return VID_FMT_N;
+	default:                  return VID_FMT_NV12;
 	}
 }
 
@@ -114,7 +106,7 @@ static void print_framerate(const struct vidsrc_st *st)
 
 	memset(&streamparm, 0, sizeof(streamparm));
 
-	streamparm.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
+	streamparm.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 
 	if (v4l2_ioctl(st->fd, VIDIOC_G_PARM, &streamparm) != 0) {
 		warning("v4l2: VIDIOC_G_PARM error (%m)\n", errno);
@@ -148,7 +140,7 @@ static int init_mmap(struct vidsrc_st *st, const char *dev_name)
 	memset(&req, 0, sizeof(req));
 
 	req.count  = 4;
-	req.type   = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
+	req.type   = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 	req.memory = V4L2_MEMORY_MMAP;
 
 	if (-1 == xioctl(st->fd, VIDIOC_REQBUFS, &req)) {
@@ -176,7 +168,7 @@ static int init_mmap(struct vidsrc_st *st, const char *dev_name)
 
 		memset(&buf, 0, sizeof(buf));
 
-		buf.type   = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
+		buf.type   = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 		buf.memory = V4L2_MEMORY_MMAP;
 		buf.index  = st->n_buffers;
 
@@ -224,7 +216,7 @@ static int v4l2_init_device(struct vidsrc_st *st, const char *dev_name,
 		}
 	}
 
-	if (!(cap.capabilities & V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE)) {
+	if (!(cap.capabilities & V4L2_CAP_VIDEO_CAPTURE)) {
 		warning("v4l2: %s is no video capture device\n", dev_name);
 		return ENODEV;
 	}
@@ -235,22 +227,62 @@ static int v4l2_init_device(struct vidsrc_st *st, const char *dev_name,
 		return ENOSYS;
 	}
 
+	/* Negotiate video format */
+	memset(&fmts, 0, sizeof(fmts));
+
+	fmts.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+	for (fmts.index=0; !v4l2_ioctl(st->fd, VIDIOC_ENUM_FMT, &fmts);
+			fmts.index++) {
+		if (match_fmt(fmts.pixelformat) != VID_FMT_N) {
+			st->pixfmt = fmts.pixelformat;
+			break;
+		}
+	}
+
+	if (!st->pixfmt) {
+		warning("v4l2: format negotiation failed: %m\n", errno);
+		return errno;
+	}
+
 	/* Select video input, video standard and tune here. */
 
 	memset(&fmt, 0, sizeof(fmt));
 
-	fmt.type		= V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
-	fmt.fmt.pix.width       = 1280;
-	fmt.fmt.pix.height      = 720;
-	fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_NV12M;
-	fmt.fmt.pix_mp.num_planes = 2;
-	//fmt.fmt.pix.field       = V4L2_FIELD_INTERLACED;
+	fmt.type		= V4L2_BUF_TYPE_VIDEO_CAPTURE;
+	fmt.fmt.pix.width       = width;
+	fmt.fmt.pix.height      = height;
+	fmt.fmt.pix.pixelformat = st->pixfmt;
+	fmt.fmt.pix.field       = V4L2_FIELD_INTERLACED;
+
+	if (-1 == xioctl(st->fd, VIDIOC_S_FMT, &fmt)) {
+		warning("v4l2: VIDIOC_S_FMT: %m\n", errno);
+		return errno;
+	}
+
+	/* Note VIDIOC_S_FMT may change width and height. */
+
+	/* Buggy driver paranoia. */
+	min = fmt.fmt.pix.width * 2;
+	if (fmt.fmt.pix.bytesperline < min)
+		fmt.fmt.pix.bytesperline = min;
+	min = fmt.fmt.pix.bytesperline * fmt.fmt.pix.height;
+	if (fmt.fmt.pix.sizeimage < min)
+		fmt.fmt.pix.sizeimage = min;
+
+	st->sz.w = fmt.fmt.pix.width;
+	st->sz.h = fmt.fmt.pix.height;
 
 	err = init_mmap(st, dev_name);
 	if (err)
 		return err;
 
 	pix = (char *)&fmt.fmt.pix.pixelformat;
+
+	if (st->pixfmt != fmt.fmt.pix.pixelformat) {
+		warning("v4l2: %s: unexpectedly got %c%c%c%c\n", dev_name,
+			pix[0], pix[1], pix[2], pix[3]);
+		return ENODEV;
+	}
 
 	info("v4l2: %s: found valid V4L2 device (%u x %u) pixfmt=%c%c%c%c\n",
 	       dev_name, fmt.fmt.pix.width, fmt.fmt.pix.height,
@@ -267,7 +299,7 @@ static void stop_capturing(struct vidsrc_st *st)
 	if (st->fd < 0)
 		return;
 
-	type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
+	type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 
 	xioctl(st->fd, VIDIOC_STREAMOFF, &type);
 }
@@ -296,7 +328,7 @@ static int start_capturing(struct vidsrc_st *st)
 
 		memset(&buf, 0, sizeof(buf));
 
-		buf.type   = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
+		buf.type   = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 		buf.memory = V4L2_MEMORY_MMAP;
 		buf.index  = i;
 
@@ -304,7 +336,7 @@ static int start_capturing(struct vidsrc_st *st)
 			return errno;
 	}
 
-	type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
+	type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 
 	if (-1 == xioctl (st->fd, VIDIOC_STREAMON, &type))
 		return errno;
@@ -332,15 +364,13 @@ static int read_frame(struct vidsrc_st *st)
 
 	memset(&buf, 0, sizeof(buf));
 
-	buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
+	buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 	buf.memory = V4L2_MEMORY_MMAP;
-	buf.length = 2;
 
 	if (-1 == xioctl (st->fd, VIDIOC_DQBUF, &buf)) {
 		switch (errno) {
 
 		case EAGAIN:
-			warning("v4l2: EAGAIN");
 			return 0;
 
 		case EIO:
@@ -361,7 +391,6 @@ static int read_frame(struct vidsrc_st *st)
 	ts = buf.timestamp;
 	timestamp = 1000000U * ts.tv_sec + ts.tv_usec;
 	timestamp = timestamp * VIDEO_TIMEBASE / 1000000U;
-
 
 	call_frame_handler(st, st->buffers[buf.index].start, timestamp);
 
