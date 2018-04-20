@@ -160,11 +160,17 @@ static int init_mmap(struct vidsrc_st *st, const char *dev_name)
 	}
 
 	st->buffers = mem_zalloc(req.count * sizeof(*st->buffers), NULL);
-	if (!st->buffers)
+	if (!st->buffers) {
+		warning("v4l2: No Buffers Available\n");
 		return ENOMEM;
+	}
 
 	for (st->n_buffers = 0; st->n_buffers<req.count; ++st->n_buffers) {
+
 		struct v4l2_buffer buf;
+
+		warning("MAPPING BUFFERS!\n");
+
 
 		memset(&buf, 0, sizeof(buf));
 
