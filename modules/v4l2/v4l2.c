@@ -179,7 +179,7 @@ static int init_mmap(struct vidsrc_st *st, const char *dev_name)
 
 		st->buffers[st->n_buffers].length = buf.length;
 		st->buffers[st->n_buffers].start =
-			v4l2_mmap(0 /* start anywhere */,
+			v4l2_mmap(NULL /* start anywhere */,
 				  buf.length,
 				  PROT_READ | PROT_WRITE /* required */,
 				  MAP_SHARED /* recommended */,
@@ -252,7 +252,7 @@ static int v4l2_init_device(struct vidsrc_st *st, const char *dev_name,
 	fmt.fmt.pix.width       = width;
 	fmt.fmt.pix.height      = height;
 	fmt.fmt.pix.pixelformat = st->pixfmt;
-	//fmt.fmt.pix.field       = V4L2_FIELD_INTERLACED;
+	fmt.fmt.pix.field = V4L2_FIELD_NONE;
 
 	if (-1 == xioctl(st->fd, VIDIOC_S_FMT, &fmt)) {
 		warning("v4l2: VIDIOC_S_FMT: %m\n", errno);
@@ -323,6 +323,12 @@ static int start_capturing(struct vidsrc_st *st)
 	unsigned int i;
 	enum v4l2_buf_type type;
 
+	if (-1 == xioctl (st->fd, VIDIOC_STREAMON, &type)) {
+		warning("v4l2: cannot STREAMON");
+		return errno;
+	}
+	
+
 	for (i = 0; i < st->n_buffers; ++i) {
 		struct v4l2_buffer buf;
 
@@ -337,9 +343,6 @@ static int start_capturing(struct vidsrc_st *st)
 	}
 
 	type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-
-	if (-1 == xioctl (st->fd, VIDIOC_STREAMON, &type))
-		return errno;
 
 	return 0;
 }
