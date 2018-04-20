@@ -241,7 +241,7 @@ static int pipeline_init(struct videnc_state *st, const struct vidsz *size)
 	 "v4l2h264enc extra-controls=\"controls,h264_profile=4,video_bitrate=2000000;\" ! "
 	 "video/x-h264,stream-format=byte-stream,alignment=nal !"
 	 "appsink name=sink emit-signals=TRUE drop=TRUE",
-	 size->1280, size->720,
+	 size->w, size->h,
 	 st->encoder.fps, st->encoder.bitrate / 1000 /* kbit/s */);
 
 	/* Initialize pipeline. */
