@@ -179,7 +179,7 @@ static int init_mmap(struct vidsrc_st *st, const char *dev_name)
 
 		st->buffers[st->n_buffers].length = buf.length;
 		st->buffers[st->n_buffers].start =
-			v4l2_mmap(NULL /* start anywhere */,
+			v4l2_mmap(0 /* start anywhere */,
 				  buf.length,
 				  PROT_READ | PROT_WRITE /* required */,
 				  MAP_SHARED /* recommended */,
