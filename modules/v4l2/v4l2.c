@@ -139,6 +139,8 @@ static int init_mmap(struct vidsrc_st *st, const char *dev_name)
 
 	memset(&req, 0, sizeof(req));
 
+	warning("in MMAP\n");
+
 	req.count  = 4;
 	req.type   = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 	req.memory = V4L2_MEMORY_MMAP;
