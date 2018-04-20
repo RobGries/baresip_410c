@@ -237,10 +237,9 @@ static int pipeline_init(struct videnc_state *st, const struct vidsz *size)
 	snprintf(pipeline, sizeof(pipeline),
 	 "appsrc name=source is-live=TRUE block=TRUE "
 	 "do-timestamp=TRUE max-bytes=1000000 ! "
-	 "videoparse width=%d height=%d format=i420 framerate=%d/1 ! "
-	 "x264enc byte-stream=TRUE rc-lookahead=0 "
-	 "tune=zerolatency speed-preset=ultrafast "
-	 "sync-lookahead=0 bitrate=%d ! "
+	 "videoparse width=%d height=%d format=NV12 framerate=%d/1 ! "
+	 "v4l2h264enc extra-controls=\"controls,h264_profile=4,video_bitrate=2000000;\" ! "
+	 "video/x-h264,stream-format=byte-stream,alignment=nal !"
 	 "appsink name=sink emit-signals=TRUE drop=TRUE",
 	 size->w, size->h,
 	 st->encoder.fps, st->encoder.bitrate / 1000 /* kbit/s */);
