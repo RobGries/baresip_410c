@@ -252,7 +252,7 @@ static int v4l2_init_device(struct vidsrc_st *st, const char *dev_name,
 	fmt.fmt.pix.width       = width;
 	fmt.fmt.pix.height      = height;
 	fmt.fmt.pix.pixelformat = st->pixfmt;
-	fmt.fmt.pix.field       = V4L2_FIELD_INTERLACED;
+	//fmt.fmt.pix.field       = V4L2_FIELD_INTERLACED;
 
 	if (-1 == xioctl(st->fd, VIDIOC_S_FMT, &fmt)) {
 		warning("v4l2: VIDIOC_S_FMT: %m\n", errno);
