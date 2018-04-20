@@ -114,7 +114,7 @@ static void print_framerate(const struct vidsrc_st *st)
 
 	memset(&streamparm, 0, sizeof(streamparm));
 
-	streamparm.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+	streamparm.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
 
 	if (v4l2_ioctl(st->fd, VIDIOC_G_PARM, &streamparm) != 0) {
 		warning("v4l2: VIDIOC_G_PARM error (%m)\n", errno);
@@ -148,7 +148,7 @@ static int init_mmap(struct vidsrc_st *st, const char *dev_name)
 	memset(&req, 0, sizeof(req));
 
 	req.count  = 4;
-	req.type   = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+	req.type   = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
 	req.memory = V4L2_MEMORY_MMAP;
 
 	if (-1 == xioctl(st->fd, VIDIOC_REQBUFS, &req)) {
@@ -176,7 +176,7 @@ static int init_mmap(struct vidsrc_st *st, const char *dev_name)
 
 		memset(&buf, 0, sizeof(buf));
 
-		buf.type   = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+		buf.type   = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
 		buf.memory = V4L2_MEMORY_MMAP;
 		buf.index  = st->n_buffers;
 
