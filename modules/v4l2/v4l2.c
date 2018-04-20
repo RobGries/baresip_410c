@@ -334,11 +334,13 @@ static int read_frame(struct vidsrc_st *st)
 
 	buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
 	buf.memory = V4L2_MEMORY_MMAP;
+	buf.length = 2;
 
 	if (-1 == xioctl (st->fd, VIDIOC_DQBUF, &buf)) {
 		switch (errno) {
 
 		case EAGAIN:
+			warning("v4l2: EAGAIN");
 			return 0;
 
 		case EIO:
@@ -359,6 +361,7 @@ static int read_frame(struct vidsrc_st *st)
 	ts = buf.timestamp;
 	timestamp = 1000000U * ts.tv_sec + ts.tv_usec;
 	timestamp = timestamp * VIDEO_TIMEBASE / 1000000U;
+
 
 	call_frame_handler(st, st->buffers[buf.index].start, timestamp);
 
