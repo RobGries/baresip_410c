@@ -281,8 +281,10 @@ static int v4l2_init_device(struct vidsrc_st *st, const char *dev_name,
 	st->sz.h = fmt.fmt.pix.height;
 
 	err = init_mmap(st, dev_name);
-	if (err)
+	if (err) {
+		info("mmap failed!");
 		return err;
+	}
 
 	pix = (char *)&fmt.fmt.pix.pixelformat;
 
