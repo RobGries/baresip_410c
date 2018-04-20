@@ -106,7 +106,7 @@ static void print_framerate(const struct vidsrc_st *st)
 
 	memset(&streamparm, 0, sizeof(streamparm));
 
-	streamparm.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+	streamparm.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
 
 	if (v4l2_ioctl(st->fd, VIDIOC_G_PARM, &streamparm) != 0) {
 		warning("v4l2: VIDIOC_G_PARM error (%m)\n", errno);
@@ -142,7 +142,7 @@ static int init_mmap(struct vidsrc_st *st, const char *dev_name)
 	warning("in MMAP\n");
 
 	req.count  = 4;
-	req.type   = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+	req.type   = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
 	req.memory = V4L2_MEMORY_MMAP;
 
 	if (-1 == xioctl(st->fd, VIDIOC_REQBUFS, &req)) {
@@ -171,12 +171,9 @@ static int init_mmap(struct vidsrc_st *st, const char *dev_name)
 
 		struct v4l2_buffer buf;
 
-		warning("MAPPING BUFFERS!\n");
-
-
 		memset(&buf, 0, sizeof(buf));
 
-		buf.type   = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+		buf.type   = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
 		buf.memory = V4L2_MEMORY_MMAP;
 		buf.index  = st->n_buffers;
 
@@ -238,7 +235,7 @@ static int v4l2_init_device(struct vidsrc_st *st, const char *dev_name,
 	/* Negotiate video format */
 	memset(&fmts, 0, sizeof(fmts));
 
-	fmts.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+	fmts.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
 	for (fmts.index=0; !v4l2_ioctl(st->fd, VIDIOC_ENUM_FMT, &fmts);
 			fmts.index++) {
 		if (match_fmt(fmts.pixelformat) != VID_FMT_N) {
@@ -256,7 +253,7 @@ static int v4l2_init_device(struct vidsrc_st *st, const char *dev_name,
 
 	memset(&fmt, 0, sizeof(fmt));
 
-	fmt.type		= V4L2_BUF_TYPE_VIDEO_CAPTURE;
+	fmt.type		= V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
 	fmt.fmt.pix.width       = width;
 	fmt.fmt.pix.height      = height;
 	fmt.fmt.pix.pixelformat = st->pixfmt;
@@ -309,7 +306,7 @@ static void stop_capturing(struct vidsrc_st *st)
 	if (st->fd < 0)
 		return;
 
-	type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+	type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
 
 	xioctl(st->fd, VIDIOC_STREAMOFF, &type);
 }
@@ -344,7 +341,7 @@ static int start_capturing(struct vidsrc_st *st)
 
 		memset(&buf, 0, sizeof(buf));
 
-		buf.type   = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+		buf.type   = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
 		buf.memory = V4L2_MEMORY_MMAP;
 		buf.index  = i;
 
@@ -352,7 +349,7 @@ static int start_capturing(struct vidsrc_st *st)
 			return errno;
 	}
 
-	type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+	type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
 
 	return 0;
 }
@@ -377,7 +374,7 @@ static int read_frame(struct vidsrc_st *st)
 
 	memset(&buf, 0, sizeof(buf));
 
-	buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+	buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
 	buf.memory = V4L2_MEMORY_MMAP;
 
 	if (-1 == xioctl (st->fd, VIDIOC_DQBUF, &buf)) {
